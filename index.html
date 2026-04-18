@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>StudioRecon: 4D Human-Scene Reconstruction from Low-Overlap Captures</title>
+
+    <meta property="og:title" content="StudioRecon: 4D Human-Scene Reconstruction from Low-Overlap Captures"/>
+    <meta property="og:description" content="StudioRecon reconstructs 4D human scenes from sparse, low-overlap cameras by decoupling background and humans with complementary priors."/>
+    <meta property="og:type" content="website"/>
+
+    <meta name="description" content="StudioRecon: 4D Human-Scene Reconstruction from Low-Overlap Captures. SIGGRAPH 2026.">
+    <meta name="keywords" content="4D reconstruction, human-scene, Gaussian splatting, video diffusion, SMPL, sparse view, low-overlap">
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+
+    <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+    <link rel="stylesheet" href="./static/css/bulma.min.css">
+    <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+    <link rel="stylesheet" href="./static/css/academicons.min.css">
+    <link rel="stylesheet" href="./static/css/index.css">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script defer src="./static/js/fontawesome.all.min.js"></script>
+    <script src="./static/js/bulma-carousel.min.js"></script>
+    <script src="./static/js/index.js"></script>
+</head>
+
+<body>
+    <!-- ==================== HERO ==================== -->
+    <section class="hero">
+        <div class="hero-body">
+            <div class="container is-max-desktop">
+                <div class="columns is-centered">
+                    <div class="column has-text-centered">
+                        <h1 class="title is-1 publication-title">4D Human-Scene Reconstruction<br>from Low-Overlap Captures</h1>
+
+                        <div class="is-size-5 publication-authors">
+                            <span class="author-block">Minhyuk Hwang<sup>*</sup>,</span>
+                            <span class="author-block">Sangmin Kim<sup>*</sup>,</span>
+                            <span class="author-block">Seunguk Do,</span>
+                            <span class="author-block">Daneul Kim,</span>
+                            <span class="author-block">Jaesik Park<sup>&dagger;</sup></span>
+                        </div>
+                        <div class="is-size-5 publication-authors">
+                            <span class="author-block">Seoul National University</span>
+                        </div>
+                        <div class="is-size-6 publication-authors" style="margin-top: 0.25rem; color: #888;">
+                            <span class="author-block"><sup>*</sup>Equal contribution</span>
+                            <span class="author-block" style="margin-left: 1rem;"><sup>&dagger;</sup>Corresponding author</span>
+                        </div>
+
+                        <p class="subtitle is-4" style="color: #363636; margin: 0.5rem 0;">SIGGRAPH 2026</p>
+
+                        <div class="publication-links">
+                            <span class="link-block">
+                                <a href="./paper.pdf" class="external-link button is-normal is-rounded is-dark">
+                                    <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                                    <span>Paper</span>
+                                </a>
+                            </span>
+                            <span class="link-block">
+                                <a href="#" class="external-link button is-normal is-rounded is-dark">
+                                    <span class="icon"><i class="ai ai-arxiv"></i></span>
+                                    <span>arXiv</span>
+                                </a>
+                            </span>
+                            <span class="link-block">
+                                <a href="#" class="external-link button is-normal is-rounded is-dark">
+                                    <span class="icon"><i class="fab fa-github"></i></span>
+                                    <span>Code</span>
+                                </a>
+                            </span>
+                            <span class="link-block">
+                                <a href="#bibtex" class="external-link button is-normal is-rounded is-dark">
+                                    <span class="icon"><i class="fas fa-quote-right"></i></span>
+                                    <span>BibTeX</span>
+                                </a>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TEASER VIDEO COMPARISON ==================== -->
+    <section class="hero is-light is-small">
+        <div class="hero-body">
+            <div class="container" style="max-width: 960px;">
+                <div class="content has-text-centered">
+                    <div class="video-compare-container" style="position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; cursor: col-resize; user-select: none;">
+                        <!-- Right video (Ours) - full width background -->
+                        <video id="teaser-ours" autoplay muted loop playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">
+                            <source src="./assets/teaser_ours.mp4" type="video/mp4">
+                        </video>
+                        <!-- Left video (STG) - same size as container, clipped -->
+                        <video id="teaser-stg" autoplay muted loop playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; clip-path: inset(0 50% 0 0);">
+                            <source src="./assets/teaser_stg.mp4" type="video/mp4">
+                        </video>
+                        <!-- Slider line -->
+                        <div id="teaser-slider" style="position: absolute; top: 0; left: 50%; width: 3px; height: 100%; background: white; box-shadow: 0 0 6px rgba(0,0,0,0.5); z-index: 10; pointer-events: none;">
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 36px; height: 36px; background: white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; pointer-events: none;">
+                                <span style="font-size: 14px; color: #333;">&lsaquo;&rsaquo;</span>
+                            </div>
+                        </div>
+                        <!-- Labels -->
+                        <div style="position: absolute; top: 12px; left: 16px; background: rgba(0,0,0,0.6); color: white; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600; z-index: 5;">STG</div>
+                        <div style="position: absolute; top: 12px; right: 16px; background: rgba(50,115,220,0.85); color: white; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600; z-index: 5;">Ours</div>
+                    </div>
+                    <p style="margin-top: 0.75rem; font-size: 1rem; color: #555;">
+                        Drag the slider to compare. From sparse, low-overlap cameras, StudioRecon enables bullet-time rendering with full 360&deg; orbit around dynamic human scenes.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+    (function() {
+        const container = document.querySelector('.video-compare-container');
+        const slider = document.getElementById('teaser-slider');
+        const stgVideo = document.getElementById('teaser-stg');
+        const oursVideo = document.getElementById('teaser-ours');
+        let isDragging = false;
+
+        function updateSlider(x) {
+            const rect = container.getBoundingClientRect();
+            let pos = (x - rect.left) / rect.width;
+            pos = Math.max(0.01, Math.min(0.99, pos));
+            // clip-path: inset(top right bottom left)
+            stgVideo.style.clipPath = 'inset(0 ' + ((1 - pos) * 100) + '% 0 0)';
+            slider.style.left = (pos * 100) + '%';
+        }
+
+        container.addEventListener('mousedown', (e) => { isDragging = true; updateSlider(e.clientX); });
+        container.addEventListener('mousemove', (e) => { if (isDragging) updateSlider(e.clientX); });
+        document.addEventListener('mouseup', () => { isDragging = false; });
+        container.addEventListener('touchstart', (e) => { isDragging = true; updateSlider(e.touches[0].clientX); });
+        container.addEventListener('touchmove', (e) => { if (isDragging) { updateSlider(e.touches[0].clientX); e.preventDefault(); } });
+        document.addEventListener('touchend', () => { isDragging = false; });
+
+        // Sync videos
+        oursVideo.addEventListener('play', () => { stgVideo.currentTime = oursVideo.currentTime; stgVideo.play(); });
+        oursVideo.addEventListener('seeked', () => { stgVideo.currentTime = oursVideo.currentTime; });
+        setInterval(() => { if (Math.abs(oursVideo.currentTime - stgVideo.currentTime) > 0.1) stgVideo.currentTime = oursVideo.currentTime; }, 1000);
+    })();
+    </script>
+
+    <!-- ==================== ABSTRACT ==================== -->
+    <section class="section">
+        <div class="container is-max-desktop">
+            <div class="columns is-centered has-text-centered">
+                <div class="column is-four-fifths">
+                    <h2 class="title is-3">Abstract</h2>
+                    <div class="content has-text-justified">
+                        <p>
+                            Existing volumetric capture of dynamic human performance achieves high fidelity with dense camera arrays. However, in real-world scenarios, only a handful of low-overlap cameras are available, which degrades the output quality and leaves large areas unobserved. Recent 4D reconstruction methods have focused on low-overlap settings, yet they still produce noticeable artifacts in under-observed regions. Video diffusion models have emerged as another option, but they show geometrically inconsistent results for humans. To address these limitations, we propose <strong>StudioRecon</strong>, a pipeline that reconstructs 4D human scenes from sparse, low-overlap cameras by decoupling background and humans. We densify background supervision by synthesizing hundreds of camera-controlled novel views with a video diffusion model. We also robustly initialize deformable Gaussian humans with cross-view identity association and triangulated multi-view keypoint fitting. Finally, our recursive enhancement module with motion-adaptive consistency injection harmonizes the composed output, thereby further avoiding remaining artifacts. We achieve state-of-the-art novel-view synthesis across four real-world datasets and demonstrate applications such as novel trajectory rendering and human replacement.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== METHOD ==================== -->
+    <section class="section" style="background: #fafafa;">
+        <div class="container is-max-desktop">
+            <h2 class="title is-3 has-text-centered">Method Overview</h2>
+            <div class="content has-text-centered">
+                <img class="pipeline-figure" src="./assets/pipeline.png" alt="Method Pipeline">
+                <p class="has-text-justified" style="margin-top: 1rem;">
+                    Our pipeline consists of four stages: (1) <strong>Sparse-to-Dense View Synthesis</strong> using a camera-controlled video diffusion model to synthesize hundreds of novel views from sparse inputs; (2) <strong>Multi-view Human Pose Estimation</strong> with cross-view identity association and 3D triangulation; (3) <strong>Decoupled Gaussian Reconstruction</strong> optimizing backgrounds on synthesized views and humans on original videos; (4) <strong>Recursive Enhancement Module</strong> with motion-adaptive consistency injection for temporally coherent output.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== INTERACTIVE VIEWER ==================== -->
+    <section class="section">
+        <div class="container is-max-desktop">
+            <h2 class="title is-3 has-text-centered">Interactive Viewer</h2>
+            <p class="has-text-centered" style="margin-bottom: 1.5rem; color: #666;">
+                Explore the reconstructed scene at t=0. Drag to orbit, scroll to zoom, arrow keys to move, WASD to rotate. Shown without Difix enhancement and with spherical harmonics downsampled to degree 2 for web delivery.
+            </p>
+            <div style="position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.15); background: #000;">
+                <iframe id="viewerFrame" src="./animatter15/" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" loading="lazy"></iframe>
+            </div>
+            <script>
+                // Re-focus the viewer iframe when the user mouses back into it,
+                // so keyboard controls resume working without needing to click again.
+                (function() {
+                    const fr = document.getElementById('viewerFrame');
+                    if (!fr) return;
+                    fr.addEventListener('mouseenter', () => { try { fr.contentWindow.focus(); } catch(e) {} });
+                })();
+            </script>
+        </div>
+    </section>
+
+    <!-- ==================== QUALITATIVE COMPARISON ==================== -->
+    <section class="section">
+        <div class="container container-wide">
+            <h2 class="title is-3 has-text-centered">Qualitative Comparison</h2>
+            <p class="has-text-centered" style="margin-bottom: 1.5rem; color: #666;">
+                Novel view synthesis from 4 sparse cameras on held-out evaluation views. All methods are trained on the same input.
+            </p>
+
+            <!-- Scene selector -->
+            <div class="scene-selector" id="comparison-scenes-selector">
+                <button class="scene-button active" onclick="showScene('comparison-scenes', 'scene-legoassemble', this)">Legoassemble</button>
+                <button class="scene-button" onclick="showScene('comparison-scenes', 'scene-sword', this)">Sword</button>
+                <button class="scene-button" onclick="showScene('comparison-scenes', 'scene-karate', this)">Karate</button>
+            </div>
+
+            <div id="comparison-scenes">
+                <!-- Legoassemble -->
+                <div id="scene-legoassemble" class="scene-content active">
+                    <div class="comparison-top">
+                        <div class="video-container">
+                            <div class="method-label">Ground Truth</div>
+                            <video autoplay muted loop playsinline>
+                                <source src="./assets/comparison/legoassemble_gt.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-container">
+                            <div class="method-label ours-label">Ours</div>
+                            <video autoplay muted loop playsinline>
+                                <source src="./assets/comparison/legoassemble_ours.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                    </div>
+                    <div class="comparison-bottom">
+                        <div class="video-container">
+                            <div class="method-label">Dyn3DGS</div>
+                            <video autoplay muted loop playsinline>
+                                <source src="./assets/comparison/legoassemble_dyn3dgs.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-container">
+                            <div class="method-label">MonoFusion</div>
+                            <video autoplay muted loop playsinline>
+                                <source src="./assets/comparison/legoassemble_monofusion.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-container">
+                            <div class="method-label">STG</div>
+                            <video autoplay muted loop playsinline>
+                                <source src="./assets/comparison/legoassemble_stg.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sword -->
+                <div id="scene-sword" class="scene-content">
+                    <div class="comparison-top">
+                        <div class="video-container">
+                            <div class="method-label">Ground Truth</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/sword_gt.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-container">
+                            <div class="method-label ours-label">Ours</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/sword_ours.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                    </div>
+                    <div class="comparison-bottom">
+                        <div class="video-container">
+                            <div class="method-label">Dyn3DGS</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/sword_dyn3dgs.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-container">
+                            <div class="method-label">MonoFusion</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/sword_monofusion.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-container">
+                            <div class="method-label">STG</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/sword_stg.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Karate -->
+                <div id="scene-karate" class="scene-content">
+                    <div class="comparison-top">
+                        <div class="video-container">
+                            <div class="method-label">Ground Truth</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/karate_gt.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-container">
+                            <div class="method-label ours-label">Ours</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/karate_ours.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                    </div>
+                    <div class="comparison-bottom">
+                        <div class="video-container">
+                            <div class="method-label">Dyn3DGS</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/karate_dyn3dgs.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-container">
+                            <div class="method-label">MonoFusion</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/karate_monofusion.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-container">
+                            <div class="method-label">STG</div>
+                            <video muted loop playsinline>
+                                <source src="./assets/comparison/karate_stg.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== APPLICATIONS ==================== -->
+    <section class="section">
+        <div class="container is-max-desktop">
+            <h2 class="title is-3 has-text-centered">Applications</h2>
+
+            <h3 class="title is-4" style="margin-top: 1.5rem;">Novel Camera Trajectories</h3>
+            <p>Our Gaussian representation supports rendering from arbitrary camera paths, including dolly zoom and oscillating motion.</p>
+            <div class="app-grid" style="margin-top: 1rem;">
+                <div class="video-container">
+                    <video autoplay muted loop playsinline>
+                        <source src="./assets/applications/dolly_zoom.mp4" type="video/mp4">
+                    </video>
+                    <p class="app-label">Dolly Zoom</p>
+                </div>
+                <div class="video-container">
+                    <video autoplay muted loop playsinline>
+                        <source src="./assets/applications/oscillating.mp4" type="video/mp4">
+                    </video>
+                    <p class="app-label">Oscillating Trajectory</p>
+                </div>
+            </div>
+
+            <h3 class="title is-4" style="margin-top: 2.5rem;">Human Replacement</h3>
+            <p>Since humans and backgrounds are reconstructed independently, we can replace actors with new identities from a single reference image.</p>
+            <div class="app-grid" style="margin-top: 1rem;">
+                <div class="video-container">
+                    <video autoplay muted loop playsinline>
+                        <source src="./assets/applications/replacement_original.mp4" type="video/mp4">
+                    </video>
+                    <p class="app-label">Original</p>
+                </div>
+                <div class="video-container">
+                    <video autoplay muted loop playsinline>
+                        <source src="./assets/applications/replacement_clown.mp4" type="video/mp4">
+                    </video>
+                    <p class="app-label">Replaced</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== ABLATION ==================== -->
+    <section class="section" style="background: #fafafa;">
+        <div class="container container-wide">
+            <h2 class="title is-3 has-text-centered">Ablation Study</h2>
+            <p class="has-text-centered" style="margin-bottom: 1.5rem; color: #666;">
+                We ablate our two key contributions: dense view synthesis via video diffusion and recursive diffusion enhancement.
+            </p>
+            <div class="comparison-grid comparison-grid-3">
+                <div class="video-container">
+                    <div class="method-label">4-View Baseline</div>
+                    <video autoplay muted loop playsinline>
+                        <source src="./assets/ablation/baseline.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="video-container">
+                    <div class="method-label">+ Dense View Synthesis</div>
+                    <video autoplay muted loop playsinline>
+                        <source src="./assets/ablation/viewsynth.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="video-container">
+                    <div class="method-label ours-label">+ Enhancement (Ours)</div>
+                    <video autoplay muted loop playsinline>
+                        <source src="./assets/ablation/full.mp4" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== BIBTEX ==================== -->
+    <section class="section" id="bibtex">
+        <div class="container is-max-desktop content">
+            <h2 class="title">BibTeX</h2>
+            <pre><code>@inproceedings{hwang2026studiorecon,
+  title     = {4D Human-Scene Reconstruction from Low-Overlap Captures},
+  author    = {Hwang, Minhyuk and Kim, Sangmin and Do, Seunguk and Kim, Daneul and Park, Jaesik},
+  booktitle = {ACM SIGGRAPH 2026 Conference Proceedings},
+  year      = {2026}
+}</code></pre>
+        </div>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="content has-text-centered">
+                <p>
+                    This website is adapted from the <a href="https://github.com/nerfies/nerfies.github.io">Nerfies</a> template.
+                </p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

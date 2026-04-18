@@ -1,0 +1,14 @@
+# Editor / OS
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Local-only
+reference.html
