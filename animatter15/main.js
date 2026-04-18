@@ -1496,6 +1496,15 @@ async function main() {
         const { done, value } = await reader.read();
         if (done || stopLoading) break;
 
+        // Content-Length may understate actual bytes (e.g. transparent gzip decode),
+        // so grow the buffer if the incoming chunk would overflow.
+        if (bytesRead + value.length > splatData.length) {
+            const grown = new Uint8Array(
+                Math.max(splatData.length * 2, bytesRead + value.length)
+            );
+            grown.set(splatData);
+            splatData = grown;
+        }
         splatData.set(value, bytesRead);
         bytesRead += value.length;
 
