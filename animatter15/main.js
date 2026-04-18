@@ -836,12 +836,15 @@ async function main() {
         throw new Error(req.status + " Unable to load " + req.url);
 
     const rowLength = 3 * 4 + 3 * 4 + 4 + 4;
+    // Buffer gets allocated from Content-Length, but some servers (gzip, chunked
+    // transfer) under-report it; grow on overflow below.
+    const clHeader = req.headers.get("content-length");
+    const initialSize = clHeader ? parseInt(clHeader, 10) || 0 : 0;
+    let splatData = new Uint8Array(Math.max(initialSize, 1024 * 1024));
     const reader = req.body.getReader();
-    let splatData = new Uint8Array(req.headers.get("content-length"));
 
-    const downsample =
-        splatData.length / rowLength > 500000 ? 1 : 1 / devicePixelRatio;
-    console.log(splatData.length / rowLength, downsample);
+    const downsample = 1; // can't reliably decide before streaming; keep full-res
+    console.log("initial alloc:", splatData.length, "bytes; downsample:", downsample);
 
     const worker = new Worker(
         URL.createObjectURL(
