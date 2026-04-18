@@ -140,10 +140,22 @@
         container.addEventListener('touchmove', (e) => { if (isDragging) { updateSlider(e.touches[0].clientX); e.preventDefault(); } });
         document.addEventListener('touchend', () => { isDragging = false; });
 
-        // Sync videos
-        oursVideo.addEventListener('play', () => { stgVideo.currentTime = oursVideo.currentTime; stgVideo.play(); });
-        oursVideo.addEventListener('seeked', () => { stgVideo.currentTime = oursVideo.currentTime; });
-        setInterval(() => { if (Math.abs(oursVideo.currentTime - stgVideo.currentTime) > 0.1) stgVideo.currentTime = oursVideo.currentTime; }, 1000);
+        // Sync STG to Ours (master = ours). Covers play/pause/seek/drift/tab-resume.
+        const safePlay = v => { const p = v.play(); if (p && p.catch) p.catch(()=>{}); };
+        oursVideo.addEventListener('play',  () => { stgVideo.currentTime = oursVideo.currentTime; safePlay(stgVideo); });
+        oursVideo.addEventListener('pause', () => { stgVideo.pause(); });
+        oursVideo.addEventListener('seeked',() => { stgVideo.currentTime = oursVideo.currentTime; });
+        setInterval(() => {
+            if (oursVideo.paused) return;
+            if (stgVideo.paused) safePlay(stgVideo);
+            if (Math.abs(oursVideo.currentTime - stgVideo.currentTime) > 0.1) {
+                stgVideo.currentTime = oursVideo.currentTime;
+            }
+        }, 500);
+        // Force restart on tab visibility return
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) { safePlay(oursVideo); safePlay(stgVideo); }
+        });
     })();
     </script>
 
