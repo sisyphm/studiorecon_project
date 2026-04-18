@@ -28,11 +28,15 @@ function showScene(containerId, sceneId, btn) {
 // On page load, ensure all visible videos play
 document.addEventListener('DOMContentLoaded', function() {
     // Play all videos in active scenes
+    // Must be muted for browsers (Safari/iOS) that block autoplay of videos
+    // with audio. Catch NotAllowedError rejection so console stays clean.
     var activeScenes = document.querySelectorAll('.scene-content.active');
     for (var i = 0; i < activeScenes.length; i++) {
         var videos = activeScenes[i].querySelectorAll('video');
         for (var j = 0; j < videos.length; j++) {
-            videos[j].play();
+            videos[j].muted = true;
+            var p = videos[j].play();
+            if (p && typeof p.catch === 'function') p.catch(function(){});
         }
     }
 
